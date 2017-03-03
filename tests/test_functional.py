@@ -16,7 +16,7 @@ hg38_seq = ('CCTCGGTGCTCTGGCCGAGCATGGCCTGCACCTCGCCGCGGTACTGCACCAGGCGGCCGCA'
 class SeqSeekTestCase(TestCase):
     def setUp(self):
         os.environ["SEQSEEK_DATA_DIR"] = os.path.join('tests', 'seqseek_fixtures')
-        self.strander = stranding.GenomeStrander()
+        self.strander = stranding.GenomeStranding()
 
 
 class TestBasicStranding(SeqSeekTestCase):

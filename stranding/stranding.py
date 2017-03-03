@@ -21,7 +21,7 @@ DEFAULT_MATCH_SCORE = 2
 DEFAULT_MISMATCH_PENALTY = -1
 
 
-class GenomeStrander(object):
+class GenomeStranding(object):
 
     def __init__(self,
                  min_flank_length=DEFAULT_MIN_FLANK_LENGTH,
@@ -83,14 +83,9 @@ class GenomeStrander(object):
         high_scoring_alignments = [a for a in alignments if self.is_high_scoring(a)]
         strands = [-1 if a.rc else 1 for a in high_scoring_alignments]
 
-        for alignment in high_scoring_alignments:
-            logger.info(alignment.dump())
-
         if not high_scoring_alignments:
             for alignment in alignments:
-                logger.debug(alignment.query)
-                logger.debug(alignment.ref)
-                logger.debug(alignment.dump())
+                alignment.dump()
             raise Unstrandable()
 
         if not len(set(strands)) == 1:
