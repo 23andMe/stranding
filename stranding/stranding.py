@@ -39,8 +39,6 @@ class GenomeStranding(object):
             self.aligner = swalign.LocalAlignment(ssw_scoring)
 
     def is_high_scoring(self, alignment):
-        print self.identity_cutoff_ratio
-        print self.score_multiplier
         return (alignment.identity > self.identity_cutoff_ratio and
                 alignment.score > len(alignment.query) * self.score_multiplier)
 
