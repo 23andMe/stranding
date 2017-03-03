@@ -1,6 +1,7 @@
 import logging
 
-import swalign
+from Bio.pairwise2 import align, format_alignment
+from Bio.Seq import Seq
 
 from seqseek import Chromosome
 
@@ -35,13 +36,15 @@ class GenomeStranding(object):
             self.identity_cutoff_ratio = identity_cutoff_ratio
             self.match_score = match_score
             self.mismatch_penalty = mismatch_penalty
-            ssw_scoring = swalign.NucleotideScoringMatrix(self.match_score, self.mismatch_penalty)
-            self.aligner = swalign.LocalAlignment(ssw_scoring)
+            #ssw_scoring = swalign.NucleotideScoringMatrix(self.match_score, self.mismatch_penalty)
+            #self.aligner = swalign.LocalAlignment(ssw_scoring)
 
-    def is_high_scoring(self, alignment):
-        return (alignment.identity > self.identity_cutoff_ratio and
-                alignment.score > len(alignment.query) * self.score_multiplier)
+    def is_high_scoring(self, alignment, query):
+        a1, a2, score, begin, end = alignment
+        return score > len(query) * self.score_multiplier
 
+    def align(self, a, b):
+        return align.localms(a, b, self.match_score, self.mismatch_penalty, self.mismatch_penalty, self.mismatch_penalty)
 
     def strand_flanks(self, _5p, _3p, build, chr_name, pos, window=DEFAULT_WINDOW_EXTENSION):
         """
@@ -71,22 +74,28 @@ class GenomeStranding(object):
         except ValueError:
             raise MissingReferenceFlank()
 
+        ref_5p_RC = str(Seq(ref_5p).reverse_complement())
+        ref_3p_RC = str(Seq(ref_3p).reverse_complement())
+
         # alignments named w.r.t the reference sequence
-        fwd_5p_alignment = self.aligner.align(ref_5p, _5p)
-        fwd_3p_alignment = self.aligner.align(ref_3p, _3p)
-        rev_5p_alignment = self.aligner.align(swalign.revcomp(ref_5p), _3p, rc=True)
-        rev_3p_alignment = self.aligner.align(swalign.revcomp(ref_3p), _5p, rc=True)
+        fwd_5p_alignments = self.align(ref_5p, _5p)
+        fwd_3p_alignments = self.align(ref_3p, _3p)
+        rev_5p_alignments = self.align(ref_5p_RC, _3p)
+        rev_3p_alignments = self.align(ref_3p_RC, _5p)
 
-        alignments = [fwd_5p_alignment, fwd_3p_alignment, rev_5p_alignment, rev_3p_alignment]
-        high_scoring_alignments = [a for a in alignments if self.is_high_scoring(a)]
-        strands = [-1 if a.rc else 1 for a in high_scoring_alignments]
+        good_fwd_5p_alignments = [a for a in fwd_5p_alignments if self.is_high_scoring(a, _5p)]
+        good_fwd_3p_alignments = [a for a in fwd_3p_alignments if self.is_high_scoring(a, _3p)]
+        good_rev_5p_alignments = [a for a in rev_5p_alignments if self.is_high_scoring(a, _3p)]
+        good_rev_3p_alignments = [a for a in rev_3p_alignments if self.is_high_scoring(a, _5p)]
 
-        if not high_scoring_alignments:
-            for alignment in alignments:
-                alignment.dump()
-            raise Unstrandable()
+        good_fwd_alignments = good_fwd_5p_alignments + good_fwd_3p_alignments
+        good_rev_alignments = good_rev_5p_alignments + good_rev_3p_alignments
 
-        if not len(set(strands)) == 1:
+        if good_fwd_alignments and good_rev_alignments:
             raise InconsistentAlignment()
+        elif good_fwd_alignments:
+            return 1
+        elif good_rev_alignments:
+            return -1
+        raise Unstrandable()
 
-        return strands[0]

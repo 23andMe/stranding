@@ -4,3 +4,4 @@
 .tox
 ve/
 stranding.egg-info/
+dist/
