@@ -39,12 +39,12 @@ class GenomeStranding(object):
             #ssw_scoring = swalign.NucleotideScoringMatrix(self.match_score, self.mismatch_penalty)
             #self.aligner = swalign.LocalAlignment(ssw_scoring)
 
-    def is_high_scoring(self, alignment, query):
-        a1, a2, score, begin, end = alignment
+    def is_high_scoring(self, score, query):
         return score > len(query) * self.score_multiplier
 
     def align(self, a, b):
-        return align.localms(a, b, self.match_score, self.mismatch_penalty, self.mismatch_penalty, self.mismatch_penalty)
+        return align.localms(a, b, self.match_score, self.mismatch_penalty,
+                             self.mismatch_penalty, self.mismatch_penalty, score_only=True)
 
     def strand_flanks(self, _5p, _3p, build, chr_name, pos, window=DEFAULT_WINDOW_EXTENSION):
         """
@@ -53,7 +53,6 @@ class GenomeStranding(object):
 
         Consider BLAT if mapping information is unknown.
         """
-
         # sanity checks
         if pos == 0:
             raise Unstrandable('Position 0 is unmapped')
@@ -78,24 +77,25 @@ class GenomeStranding(object):
         ref_3p_RC = str(Seq(ref_3p).reverse_complement())
 
         # alignments named w.r.t the reference sequence
-        fwd_5p_alignments = self.align(ref_5p, _5p)
-        fwd_3p_alignments = self.align(ref_3p, _3p)
-        rev_5p_alignments = self.align(ref_5p_RC, _3p)
-        rev_3p_alignments = self.align(ref_3p_RC, _5p)
+        fwd_5p_score = self.align(ref_5p, _5p)
+        fwd_3p_score = self.align(ref_3p, _3p)
+        rev_5p_score = self.align(ref_5p_RC, _3p)
+        rev_3p_score = self.align(ref_3p_RC, _5p)
 
-        good_fwd_5p_alignments = [a for a in fwd_5p_alignments if self.is_high_scoring(a, _5p)]
-        good_fwd_3p_alignments = [a for a in fwd_3p_alignments if self.is_high_scoring(a, _3p)]
-        good_rev_5p_alignments = [a for a in rev_5p_alignments if self.is_high_scoring(a, _3p)]
-        good_rev_3p_alignments = [a for a in rev_3p_alignments if self.is_high_scoring(a, _5p)]
 
-        good_fwd_alignments = good_fwd_5p_alignments + good_fwd_3p_alignments
-        good_rev_alignments = good_rev_5p_alignments + good_rev_3p_alignments
+        strands = []
+        if self.is_high_scoring(fwd_5p_score, _5p):
+            strands.append(1)
+        if self.is_high_scoring(fwd_3p_score, _3p):
+            strands.append(1)
+        if self.is_high_scoring(rev_5p_score, _3p):
+            strands.append(-1)
+        if self.is_high_scoring(rev_3p_score, _5p):
+            strands.append(-1)
 
-        if good_fwd_alignments and good_rev_alignments:
+        if len(set(strands)) > 1:
             raise InconsistentAlignment()
-        elif good_fwd_alignments:
-            return 1
-        elif good_rev_alignments:
-            return -1
+        elif strands:
+            return strands[0]
         raise Unstrandable()
 
