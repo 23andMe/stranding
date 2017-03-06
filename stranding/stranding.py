@@ -19,7 +19,7 @@ DEFAULT_WINDOW_EXTENSION = 20
 DEFAULT_IDENTITY_CUTOFF_RATIO = 0.77
 DEFAULT_MATCH_SCORE = 2
 DEFAULT_MISMATCH_PENALTY = -1
-DEFAULT_GAP_OPEN_PENALTY = -4
+DEFAULT_GAP_OPEN_PENALTY = -5
 
 
 class GenomeStranding(object):
@@ -38,22 +38,35 @@ class GenomeStranding(object):
             self.gap_open_penalty = gap_open_penalty
 
     def is_high_scoring(self, score, query):
+        if len(query) < self.min_flank_length:
+            return False
         return score > len(query) * self.match_score * self.identity_cutoff_ratio
 
     def is_perfect_score(self, score, query):
-        return score == len(query) * self.match_score
+        return score == len(query) * self.match_score and len(query) > self.min_flank_length
 
-    def align(self, a, b, score_only=True):
-        return align.localms(a, b, self.match_score, self.mismatch_penalty,
-                             self.gap_open_penalty, self.mismatch_penalty,
-                             score_only=score_only)
+    def align(self, ref, query, score_only=True):
+        alignment = align.localms(ref, query, self.match_score, self.mismatch_penalty,
+                                  self.gap_open_penalty, self.mismatch_penalty,
+                                  score_only=score_only)
+        alignment2 = align.localms(ref, query, self.match_score, self.mismatch_penalty,
+                                  self.gap_open_penalty, self.mismatch_penalty,
+                                  score_only=False)
+        for a in alignment2:
+            if self.is_high_scoring(a[2], query):
+                logger.debug(format_alignment(*a))
+
+
+
+        if score_only and not alignment:
+            return 0
+        return alignment
 
     def align_and_log(self, ref, query):
         alignments = self.align(ref, query, False)
         for a in alignments:
             if self.is_high_scoring(a, query):
                 logger.error(format_alignment(*a))
-                print format_alignment(*a)
 
 
     def strand_flanks(self, _5p, _3p, build, chr_name, pos, window=DEFAULT_WINDOW_EXTENSION):
@@ -68,18 +81,20 @@ class GenomeStranding(object):
             raise Unstrandable('Position 0 is unmapped')
         elif chr_name in ('0', 0):
             raise Unstrandable('Chromosome 0 is unmapped')
-        elif max(_5p, _3p) < self.min_flank_length:
-            raise FlanksTooShort('Min flank length is specified as %d' % self.min_flank_length)
+        elif max(len(_5p), len(_3p)) < self.min_flank_length:
+            raise FlanksTooShort('At least one flank must be longer than the specified'
+                                 'minimum flank length of s %d' % self.min_flank_length)
 
         # chromosome-specific conventions
         loop = chr_name == 'MT'
         chr_name = chr_name if chr_name != 'XY' else 'X'
+        max_length = max(len(_5p), len(_3p))
 
         # reference sequences
         try:
             chromosome = Chromosome(chr_name, build, loop=loop)
-            ref_5p = chromosome.sequence(pos - window - len(_5p), pos + window)
-            ref_3p = chromosome.sequence(pos - window, pos + len(_3p) + window)
+            ref_5p = chromosome.sequence(pos - window - max_length, pos + window)
+            ref_3p = chromosome.sequence(pos - window, pos + max_length + window + 1)
         except ValueError:
             raise MissingReferenceFlank(
                 'Could not find flanks for %s %d %d' % (chr_name, pos, window))
@@ -94,6 +109,7 @@ class GenomeStranding(object):
 
         fwd_3p_score = self.align(ref_3p, _3p)
         if self.is_perfect_score(fwd_3p_score, _3p):
+            print 'perfect 1'
             return 1
         elif self.is_high_scoring(fwd_3p_score, _3p):
             strands.append(1)
@@ -114,12 +130,13 @@ class GenomeStranding(object):
             strands.append(-1)
 
         if len(set(strands)) > 1:
+            logger.error('Forward alignments')
             self.align_and_log(ref_5p, _5p)
             self.align_and_log(ref_3p, _3p)
+            logger.error('Reverse alignments')
             self.align_and_log(ref_5p_RC, _3p)
             self.align_and_log(ref_3p_RC, _5p)
             raise InconsistentAlignment('Inconsistent alignments')
         elif strands:
             return strands[0]
         raise Unstrandable('No matching alignments')
-
