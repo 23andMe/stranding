@@ -49,15 +49,6 @@ class GenomeStranding(object):
         alignment = align.localms(ref, query, self.match_score, self.mismatch_penalty,
                                   self.gap_open_penalty, self.mismatch_penalty,
                                   score_only=score_only)
-        alignment2 = align.localms(ref, query, self.match_score, self.mismatch_penalty,
-                                  self.gap_open_penalty, self.mismatch_penalty,
-                                  score_only=False)
-        for a in alignment2:
-            if self.is_high_scoring(a[2], query):
-                logger.debug(format_alignment(*a))
-
-
-
         if score_only and not alignment:
             return 0
         return alignment
@@ -109,7 +100,6 @@ class GenomeStranding(object):
 
         fwd_3p_score = self.align(ref_3p, _3p)
         if self.is_perfect_score(fwd_3p_score, _3p):
-            print 'perfect 1'
             return 1
         elif self.is_high_scoring(fwd_3p_score, _3p):
             strands.append(1)
