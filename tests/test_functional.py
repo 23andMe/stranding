@@ -68,7 +68,7 @@ class TestBasicStranding(SeqSeekTestCase):
     def test_strict_stranding(self):
         _5p = self.PERFECT_5P + 'A'
         _3p = self.PERFECT_3P + 'A'
-        strander = stranding.GenomeStranding(identity_cutoff_ratio=1.0)
+        strander = stranding.GenomeStranding(tolerance=1.0)
         with self.assertRaises(stranding.Unstrandable):
             self.assertEqual(1, strander.strand_flanks(_5p, _3p, BUILD37, 1, 60))
 
