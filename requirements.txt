@@ -1,5 +1,0 @@
-seqseek
-swalign
-pytest
-pytest-cov
-
