@@ -26,10 +26,15 @@ class TestBasicStranding(SeqSeekTestCase):
     def test_perfect_forward_alignment(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
         assert 1 == self.strander.strand_flanks(_5p, _3p, BUILD37, 1, 60)
+        assert 1 == self.strander.strand_flanks('', _3p, BUILD37, 1, 60)
 
     def test_perfect_reverse_alignment(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert -1 == self.strander.strand_flanks(_5p, _3p, BUILD38, 1, 50, window=10)
+        assert -1 == self.strander.strand_flanks('', _3p, BUILD38, 1, 60, window=10)
+
+    def test_perfect_reverse_complement_3p(self):
+        _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
+        assert -1 == self.strander.strand_flanks(_5p, '', BUILD38, 1, 52, window=10)
 
     def test_offset_forward_alignment(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
@@ -73,7 +78,7 @@ class TestFuzzyStranding(SeqSeekTestCase):
         assert -1 == self.strander.strand_flanks(_5p, _3p, BUILD38, 1, 60, window=10)
 
     def test_inconsistent_stranding(self):
-        _5p = "CGCCTG"  # this is present on both the forward and reverse strand in the same region
+        _5p = "CGCCTGA"  # this is present on both the forward and reverse strand in the same region
         with self.assertRaises(stranding.InconsistentAlignment):
             self.strander.strand_flanks(_5p, '', BUILD37, 1, 80)
 
