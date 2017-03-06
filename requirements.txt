@@ -1,5 +1,5 @@
 seqseek
-swalign
+biopython
 pytest
 pytest-cov
 
