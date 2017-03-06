@@ -33,27 +33,27 @@ class TestBasicStranding(SeqSeekTestCase):
 
     def test_perfect_forward_alignment_5p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert 1 == self.strander.strand_flanks(_5p, _3p, BUILD37, 1, 60, window=0)
+        assert 1 == self.strander.strand_flanks(_5p, _3p, BUILD37, 1, 60)
 
     def test_perfect_forward_alignment_3p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert 1 == self.strander.strand_flanks('', _3p, BUILD37, 1, 60, window=0)
+        assert 1 == self.strander.strand_flanks('', _3p, BUILD37, 1, 60)
 
     def test_perfect_reverse_alignment_5p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert -1 == self.strander.strand_flanks('', _3p, BUILD38, 1, 60, window=0)
+        assert -1 == self.strander.strand_flanks('', _3p, BUILD38, 1, 60)
 
     def test_perfect_reverse_alignment_3p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert -1 == self.strander.strand_flanks(_5p, '', BUILD38, 1, 60, window=0)
+        assert -1 == self.strander.strand_flanks(_5p, '', BUILD38, 1, 60)
 
     def test_offset_forward_alignment(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert 1 == self.strander.strand_flanks(_5p, _3p, BUILD37, 1, 50)
+        assert 1 == self.strander.strand_flanks(_5p, _3p, BUILD37, 1, 50, window=10)
 
     def test_offset_reverse_alignment(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert -1 == self.strander.strand_flanks(_5p, _3p, BUILD38, 1, 50)
+        assert -1 == self.strander.strand_flanks(_5p, _3p, BUILD38, 1, 50, window=10)
 
     def test_alignment_beyond_offset_boundary(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
@@ -64,6 +64,13 @@ class TestBasicStranding(SeqSeekTestCase):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
         with self.assertRaises(stranding.MissingReferenceFlank):
             self.strander.strand_flanks(_5p, _3p, BUILD38, 1, 10)
+
+    def test_strict_stranding(self):
+        _5p = self.PERFECT_5P + 'A'
+        _3p = self.PERFECT_3P + 'A'
+        strander = stranding.GenomeStranding(identity_cutoff_ratio=1.0)
+        with self.assertRaises(stranding.Unstrandable):
+            self.assertEqual(1, strander.strand_flanks(_5p, _3p, BUILD37, 1, 60))
 
     def test_chromosome_0(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
@@ -82,6 +89,7 @@ class TestBasicStranding(SeqSeekTestCase):
     def test_short_flanks(self):
         with self.assertRaises(stranding.FlanksTooShort):
             self.strander.strand_flanks('atcg', 'atcg', BUILD37, 1, 1)
+
 
 class TestFuzzyStranding(SeqSeekTestCase):
 

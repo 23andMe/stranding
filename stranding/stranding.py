@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 from Bio.pairwise2 import align, format_alignment
 from Bio.Seq import Seq
@@ -11,11 +12,9 @@ from .exceptions import (MissingReferenceFlank,
                         FlanksTooShort)
 
 
-logger = logging.getLogger("stranding")
-
-
-DEFAULT_MIN_FLANK_LENGTH = 10
-DEFAULT_WINDOW_EXTENSION = 20
+LOGGER = logging.getLogger("stranding")
+DEFAULT_MIN_FLANK_LENGTH = 15
+DEFAULT_WINDOW_EXTENSION = 0
 DEFAULT_IDENTITY_CUTOFF_RATIO = 0.77
 DEFAULT_MATCH_SCORE = 2
 DEFAULT_MISMATCH_PENALTY = -1
@@ -36,6 +35,10 @@ class GenomeStranding(object):
             self.match_score = match_score
             self.mismatch_penalty = mismatch_penalty
             self.gap_open_penalty = gap_open_penalty
+            if self.min_flank_length < DEFAULT_MIN_FLANK_LENGTH:
+                warnings.warn('Short flank lengths may lead to inaccurate alignments')
+
+
 
     def is_high_scoring(self, score, query):
         if len(query) < self.min_flank_length:
@@ -57,8 +60,7 @@ class GenomeStranding(object):
         alignments = self.align(ref, query, False)
         for a in alignments:
             if self.is_high_scoring(a, query):
-                logger.error(format_alignment(*a))
-
+                LOGGER.error(format_alignment(*a))
 
     def strand_flanks(self, _5p, _3p, build, chr_name, pos, window=DEFAULT_WINDOW_EXTENSION):
         """
@@ -90,40 +92,51 @@ class GenomeStranding(object):
             raise MissingReferenceFlank(
                 'Could not find flanks for %s %d %d' % (chr_name, pos, window))
 
-        strands = []
-
-        fwd_5p_score = self.align(ref_5p, _5p)
-        if self.is_perfect_score(fwd_5p_score, _5p):
+	# cheap
+        if window == 0 and (_3p == ref_3p or _5p == ref_5p):
             return 1
-        elif self.is_high_scoring(fwd_5p_score, _5p):
-            strands.append(1)
-
-        fwd_3p_score = self.align(ref_3p, _3p)
-        if self.is_perfect_score(fwd_3p_score, _3p):
-            return 1
-        elif self.is_high_scoring(fwd_3p_score, _3p):
-            strands.append(1)
 
         ref_5p_RC = str(Seq(ref_5p).reverse_complement())
         ref_3p_RC = str(Seq(ref_3p).reverse_complement())
 
+        if window == 0 and (_3p == ref_5p_RC or _5p == ref_3p_RC):
+            return -1
+
+        if window == 0 and self.identity_cutoff_ratio == 1.0:
+            raise Unstrandable('Strict stranding failed')
+
+	# expensive
+        fwd_5p_score = self.align(ref_5p, _5p)
+        if self.is_perfect_score(fwd_5p_score, _5p):
+            return 1
+
+        fwd_3p_score = self.align(ref_3p, _3p)
+        if self.is_perfect_score(fwd_3p_score, _3p):
+            return 1
+
         rev_5p_score = self.align(ref_5p_RC, _3p)
         if self.is_perfect_score(rev_5p_score, _3p):
             return -1
-        elif self.is_high_scoring(rev_5p_score, _3p):
-            strands.append(-1)
 
         rev_3p_score = self.align(ref_3p_RC, _5p)
         if self.is_perfect_score(rev_3p_score, _5p):
             return -1
+
+        strands = []
+        if self.is_high_scoring(fwd_5p_score, _5p):
+            strands.append(1)
+        if self.is_high_scoring(fwd_3p_score, _3p):
+            strands.append(1)
+        if self.is_high_scoring(rev_5p_score, _3p):
+            strands.append(-1)
         if self.is_high_scoring(rev_3p_score, _5p):
             strands.append(-1)
 
         if len(set(strands)) > 1:
-            logger.error('Forward alignments')
+            LOGGER.error('Forward alignments')
             self.align_and_log(ref_5p, _5p)
             self.align_and_log(ref_3p, _3p)
-            logger.error('Reverse alignments')
+            LOGGER.error('Reverse alignments')
             self.align_and_log(ref_5p_RC, _3p)
             self.align_and_log(ref_3p_RC, _5p)
             raise InconsistentAlignment('Inconsistent alignments')
