@@ -54,7 +54,9 @@ class GenomeStranding(object):
         return score > len(query) * self.match_score * self.tolerance
 
     def is_perfect_score(self, score, query):
-        return score == len(query) * self.match_score and len(query) > self.min_flank_length
+        if len(query) < self.min_flank_length:
+            return False
+        return score == len(query) * self.match_score
 
     def align(self, ref, query, score_only=True):
         alignment = align.localms(ref, query, self.match_score, self.mismatch_penalty,

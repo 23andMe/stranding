@@ -1,18 +1,14 @@
 #!/usr/bin/env python
+import io
 import sys
 from setuptools import setup, find_packages
 
 VERSION = '0.1.8'
 
-PY2 = sys.version_info[0] == 2
-PY3 = sys.version_info[0] == 3
 
-if PY2:
-    readme = open('README.md').read()
-    license = open('LICENSE').read()
-elif PY3:
-    readme = open('README.md', encoding='utf-8').read()
-    license = open('LICENSE', encoding='utf-8').read()
+readme = io.open('README.md', encoding='utf-8').read()
+license = io.open('LICENSE', encoding='utf-8').read()
+
 
 setup(
     name='stranding',
