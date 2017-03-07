@@ -37,7 +37,6 @@ class Outcome(object):
         self.reference = reference
         self.query = query
         self.strand = strand
-        self.score = None
 
 
 class GenomeStranding(object):
