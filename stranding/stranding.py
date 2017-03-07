@@ -12,9 +12,13 @@ from .exceptions import (MissingReferenceFlank,
                         FlanksTooShort)
 
 
-LOGGER = logging.getLogger("stranding")
+LOGGER = logging.getLogger(__name__)
 DEFAULT_MIN_FLANK_LENGTH = 15
 DEFAULT_WINDOW_EXTENSION = 0
+
+
+FORWARD_STRAND = 1
+REVERSE_STRAND = -1
 
 
 # empirically derived default values from stranding hundreds of thousands of flanks
@@ -130,13 +134,13 @@ class GenomeStranding(object):
 
 	# exact comparisons are cheap so try this first
         if window == 0 and (_3p == ref_3p or _5p == ref_5p):
-            return 1
+            return FORWARD_STRAND
 
         ref_5p_RC = str(Seq(ref_5p).reverse_complement())
         ref_3p_RC = str(Seq(ref_3p).reverse_complement())
 
         if window == 0 and (_3p == ref_5p_RC or _5p == ref_3p_RC):
-            return -1
+            return REVERSE_STRAND
 
         if window == 0 and self.tolerance == 1.0:
             raise Unstrandable('Strict stranding failed')
@@ -144,31 +148,24 @@ class GenomeStranding(object):
         # alignments are expensive so try to do as few as possible
         fwd_5p_score = self.align(ref_5p, _5p)
         if self.is_perfect_score(fwd_5p_score, _5p):
-            return 1
+            return FORWARD_STRAND
 
         fwd_3p_score = self.align(ref_3p, _3p)
         if self.is_perfect_score(fwd_3p_score, _3p):
-            return 1
+            return FORWARD_STRAND
 
         rev_5p_score = self.align(ref_5p_RC, _3p)
         if self.is_perfect_score(rev_5p_score, _3p):
-            return -1
+            return REVERSE_STRAND
 
         rev_3p_score = self.align(ref_3p_RC, _5p)
         if self.is_perfect_score(rev_3p_score, _5p):
-            return -1
+            return REVERSE_STRAND
 
-        strands = []
-        if self.is_high_scoring(fwd_5p_score, _5p):
-            strands.append(1)
-        if self.is_high_scoring(fwd_3p_score, _3p):
-            strands.append(1)
-        if self.is_high_scoring(rev_5p_score, _3p):
-            strands.append(-1)
-        if self.is_high_scoring(rev_3p_score, _5p):
-            strands.append(-1)
+        is_fwd = self.is_high_scoring(fwd_5p_score, _5p) or self.is_high_scoring(fwd_3p_score, _3p)
+        is_rev = self.is_high_scoring(rev_5p_score, _3p) or self.is_high_scoring(rev_3p_score, _5p)
 
-        if len(set(strands)) > 1:
+        if is_fwd and is_rev:
             # Alignments were accepted on both strands (!)
             # The flanks may be too short or the tolerance may be too loose.
             LOGGER.error('Forward alignments')
@@ -178,6 +175,8 @@ class GenomeStranding(object):
             self.align_and_log(ref_5p_RC, _3p)
             self.align_and_log(ref_3p_RC, _5p)
             raise InconsistentAlignment('Inconsistent alignments')
-        elif strands:
-            return strands[0]
+        elif is_fwd:
+            return FORWARD_STRAND
+        elif is_rev:
+            return REVERSE_STRAND
         raise Unstrandable('No matching alignments')
