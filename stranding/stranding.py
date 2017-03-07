@@ -129,20 +129,26 @@ class GenomeStranding(object):
         try:
             chromosome = Chromosome(chr_name, build, loop=loop)
             ref_5p = chromosome.sequence(pos - window - max_length, pos + window)
-            ref_3p = chromosome.sequence(pos - window, pos + max_length + window + 1)
+            ref_3p = chromosome.sequence(pos + 1 - window, pos + max_length + window + 1)
         except ValueError:
             raise MissingReferenceFlank(
                 'Could not find flanks for %s %d %d' % (chr_name, pos, window))
 
 	# exact comparisons are cheap so try this first
-        if window == 0 and (_3p == ref_3p or _5p == ref_5p):
-            return FORWARD_STRAND
+        if window == 0:
+            if _3p == ref_3p:
+                return FORWARD_STRAND
+            if _5p == ref_5p:
+                return FORWARD_STRAND
 
         ref_5p_RC = str(Seq(ref_5p).reverse_complement())
         ref_3p_RC = str(Seq(ref_3p).reverse_complement())
 
-        if window == 0 and (_3p == ref_5p_RC or _5p == ref_3p_RC):
-            return REVERSE_STRAND
+        if window == 0:
+            if _3p == ref_5p_RC:
+                return REVERSE_STRAND
+            if _5p == ref_3p_RC:
+                return REVERSE_STRAND
 
         if window == 0 and self.tolerance == 1.0:
             raise Unstrandable('Strict stranding failed')

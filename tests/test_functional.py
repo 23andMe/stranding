@@ -19,6 +19,7 @@ class SeqSeekTestCase(TestCase):
     def setUp(self):
         os.environ["SEQSEEK_DATA_DIR"] = os.path.join('tests', 'seqseek_fixtures')
         self.strander = stranding.GenomeStranding()
+        self.strict_strander = stranding.GenomeStranding(tolerance=1.0)
 
         console = logging.StreamHandler(stream=sys.stderr)
         root = logging.getLogger('')
@@ -31,21 +32,33 @@ class TestBasicStranding(SeqSeekTestCase):
     PERFECT_5P = 'GCGCGGACATGGAGGACGTG'
     PERFECT_3P = 'GCGGCCGCCTGGTGCAGTAC'
 
-    def test_perfect_forward_alignment_5p(self):
+    def test_exact_forward_alignment_5p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert 1 == self.strander.strand_flanks(_5p, _3p, BUILD37, 1, 60)
+        assert 1 == self.strict_strander.strand_flanks(_5p, '', BUILD37, 1, 60)
 
-    def test_perfect_forward_alignment_3p(self):
+    def test_exact_forward_alignment_3p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert 1 == self.strander.strand_flanks('', _3p, BUILD37, 1, 60)
+        assert 1 == self.strict_strander.strand_flanks('', _3p, BUILD37, 1, 60)
 
-    def test_perfect_reverse_alignment_5p(self):
+    def test_exact_reverse_alignment_5p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert -1 == self.strander.strand_flanks('', _3p, BUILD38, 1, 60)
+        assert -1 == self.strict_strander.strand_flanks(_5p, '', BUILD38, 1, 60)
 
-    def test_perfect_reverse_alignment_3p(self):
+    def test_exact_reverse_alignment_3p(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
-        assert -1 == self.strander.strand_flanks(_5p, '', BUILD38, 1, 60)
+        assert -1 == self.strict_strander.strand_flanks('', _3p, BUILD38, 1, 60)
+
+    def test_perfect_score_forward_alignment_5p(self):
+        _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
+        assert 1 == self.strict_strander.strand_flanks(_5p, '', BUILD37, 1, 61, window=1)
+
+    def test_perfect_score_forward_alignment_3p(self):
+        _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
+        assert 1 == self.strict_strander.strand_flanks('', _3p, BUILD37, 1, 61, window=1)
+
+    def test_perfect_score_reverse_alignment_5p(self):
+        _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
+        assert -1 == self.strict_strander.strand_flanks(_5p, '', BUILD38, 1, 61, window=1)
 
     def test_offset_forward_alignment(self):
         _5p, _3p = self.PERFECT_5P, self.PERFECT_3P
