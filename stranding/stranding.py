@@ -1,5 +1,6 @@
 import logging
 import warnings
+from collections import namedtuple
 
 from Bio.pairwise2 import align, format_alignment
 from Bio.Seq import Seq
@@ -29,6 +30,14 @@ DEFAULT_MATCH_SCORE = 2
 DEFAULT_MISMATCH_PENALTY = -1
 DEFAULT_GAP_OPEN_PENALTY = -5
 DEFAULT_TOLERANCE = 0.77
+
+
+class Outcome(object):
+    def __init__(self, reference, query, strand):
+        self.reference = reference
+        self.query = query
+        self.strand = strand
+        self.score = None
 
 
 class GenomeStranding(object):
@@ -147,25 +156,20 @@ class GenomeStranding(object):
         if window == 0 and self.tolerance == 1.0:
             raise Unstrandable('Strict stranding failed')
 
-        # alignments are expensive so try to do as few as possible
-        fwd_5p_score = self.align(ref_5p, _5p)
-        if self.is_perfect_score(fwd_5p_score, _5p):
-            return FORWARD_STRAND
+        outcomes = [
+                Outcome(ref_5p, _5p, FORWARD_STRAND),
+                Outcome(ref_3p, _3p, FORWARD_STRAND),
+                Outcome(ref_5p_RC, _3p, REVERSE_STRAND),
+                Outcome(ref_3p_RC, _5p, REVERSE_STRAND)
+            ]
 
-        fwd_3p_score = self.align(ref_3p, _3p)
-        if self.is_perfect_score(fwd_3p_score, _3p):
-            return FORWARD_STRAND
+        for outcome in outcomes:
+            outcome.score = self.align(outcome.reference, outcome.query)
+            if self.is_perfect_score(outcome.score, outcome.query):
+                return outcome.strand
 
-        rev_5p_score = self.align(ref_5p_RC, _3p)
-        if self.is_perfect_score(rev_5p_score, _3p):
-            return REVERSE_STRAND
-
-        rev_3p_score = self.align(ref_3p_RC, _5p)
-        if self.is_perfect_score(rev_3p_score, _5p):
-            return REVERSE_STRAND
-
-        is_fwd = self.is_high_scoring(fwd_5p_score, _5p) or self.is_high_scoring(fwd_3p_score, _3p)
-        is_rev = self.is_high_scoring(rev_5p_score, _3p) or self.is_high_scoring(rev_3p_score, _5p)
+        is_fwd = any(self.is_high_scoring(o.score, o.query) for o in outcomes if o.strand == FORWARD_STRAND)
+        is_rev = any(self.is_high_scoring(o.score, o.query) for o in outcomes if o.strand == REVERSE_STRAND)
 
         if is_fwd and is_rev:
             # Alignments were accepted on both strands (!)
