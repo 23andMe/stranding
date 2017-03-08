@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import io
-import sys
 from setuptools import setup, find_packages
 
 VERSION = '0.1.8'
 
-
-readme = io.open('README.md', encoding='utf-8').read()
-license = io.open('LICENSE', encoding='utf-8').read()
+with io.open('README.md', encoding='utf-8') as f:
+    readme = f.read()
+with io.open('LICENSE', encoding='utf-8') as f:
+    license = f.read()
 
 
 setup(

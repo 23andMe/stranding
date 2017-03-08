@@ -7,9 +7,9 @@ from Bio.Seq import Seq
 from seqseek import Chromosome
 
 from .exceptions import (MissingReferenceFlank,
-                        InconsistentAlignment,
-                        Unstrandable,
-                        FlanksTooShort)
+                         InconsistentAlignment,
+                         Unstrandable,
+                         FlanksTooShort)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -59,18 +59,31 @@ class GenomeStranding(object):
         return score == len(query) * self.match_score
 
     def align(self, ref, query, score_only=True):
+        """
+        Drops to biopython's pairwise2.align.localms to perform a local alignment
+        between the reference and query sequences using the specified (or default)
+        score and penalty values.
+
+        score_only=True instructs bioptyhon to only return the integer score.
+        This is claimed to be faster and less memory intensive.
+        Otherwise a tuple of (align1, align2, score, begin, end) is returned.
+        """
+
         alignment = align.localms(ref, query, self.match_score, self.mismatch_penalty,
                                   self.gap_open_penalty, self.mismatch_penalty,
                                   score_only=score_only)
         if score_only and not alignment:
+            # when biopython doesn't find any alignments in score_only mode it returns
+            # an empty list which we treat as a score of 0
             return 0
         return alignment
 
     def align_and_log(self, ref, query):
         alignments = self.align(ref, query, False)
-        for a in alignments:
-            if self.is_high_scoring(a, query):
-                LOGGER.error(format_alignment(*a))
+        for alignment_tuple in alignments:
+            a1, a2, score, begin, end = alignment_tuple
+            if self.is_high_scoring(score, query):
+                LOGGER.error(format_alignment(*alignment_tuple))
 
     def strand_flanks(self, _5p, _3p, build, chr_name, pos, window=DEFAULT_WINDOW_EXTENSION):
         """
@@ -78,7 +91,7 @@ class GenomeStranding(object):
         reference assembly. Mapping coordinates are required! This is not BLAT or BLAST.
 
         Given one or both flanks and genome mapping coordinates it determines
-        if the flanking sequence(s) coorespond to the forward or reverse strand of the
+        if the flanking sequence(s) correspond to the forward or reverse strand of the
         specified reference assembly.
 
         It can optionally look beyond exact mapping coordinates to search nearby regions
@@ -87,7 +100,7 @@ class GenomeStranding(object):
 
         The `tolerance` setting defines the minimum alignment score relative to the
         query sequence length. This is also impacted by changes to the alignment
-        scoring parameters
+        scoring parameters.
 
         When `tolerance` is 1.0 and `window` is 0.0 the algorithm will only check for
         exact sequence matches at the specified coordinates. This is the most performant
@@ -118,7 +131,7 @@ class GenomeStranding(object):
             raise Unstrandable('Chromosome 0 is unmapped')
         elif max(len(_5p), len(_3p)) < self.min_flank_length:
             raise FlanksTooShort('At least one flank must be longer than the specified'
-                                 'minimum flank length of s %d' % self.min_flank_length)
+                                 ' minimum flank length of %d' % self.min_flank_length)
 
         # chromosome-specific conventions
         loop = chr_name == 'MT'
