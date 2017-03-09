@@ -1,0 +1,7 @@
+*.pyc
+.cache
+.coverage
+.tox
+ve/
+stranding.egg-info/
+dist/
