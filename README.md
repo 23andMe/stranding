@@ -29,7 +29,7 @@ Algorithm
 =====
 
 We use the provided coordinates to fetch the surrounding reference sequence,
-computes the reverse complement, and scores pairwise local alignments between
+compute the reverse complement, and score pairwise local alignments between
 these sequences and the provided query sequence. 
 
 * If the query sequence aligns to the forward reference sequence then we
