@@ -1,4 +1,4 @@
-stranding [![Build Status](https://travis-ci.org/23andMe/stranding.svg?branch=master)](https://travis-ci.org/23andMe/stranding)
+stranding [![Tests](https://github.com/23andMe/stranding/actions/workflows/run-tests.yml/badge.svg)](https://github.com/23andMe/stranding/actions/workflows/run-tests.yml)
 =================
 Determines genome stranding for sequences mapped to a human reference assembly 
 
