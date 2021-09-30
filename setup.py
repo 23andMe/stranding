@@ -2,7 +2,7 @@
 import io
 from setuptools import setup, find_packages
 
-VERSION = '0.1.9'
+VERSION = '0.2.0'
 
 with io.open('README.md', encoding='utf-8') as f:
     readme = f.read()
@@ -14,9 +14,9 @@ setup(
     name='stranding',
     version=VERSION,
     url='https://github.com/23andMe/stranding',
-    download_url = 'https://github.com/23andMe/stranding/tarball/%s' % VERSION,
+    download_url='https://github.com/23andMe/stranding/tarball/%s' % VERSION,
     author='23andMe Engineering',
-    author_email=['mstrand@23andme.com'],
+    author_email='mstrand@23andme.com',
     description='',
     long_description=readme,
     entry_points={'console_scripts': []},
